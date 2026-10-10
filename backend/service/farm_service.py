@@ -45,26 +45,48 @@ def list_livestock(db: Session, farm_id, category=None, status="raising",
     return [r.to_dict() for r in rows], total
 
 
+# status 只允许这三个值；品种阶段（育肥/母羊等）用 breed 表的 stage 表达
+LIVESTOCK_STATUS = ("raising", "sold", "dead")
+
+
 def add_livestock(db: Session, farm_id, data: dict):
-    row = Livestock(
-        farm_id=farm_id,
-        category=data["category"],
-        breed_id=data.get("breed_id"),
-        ear_tag=data.get("ear_tag"),
-        birth_date=data.get("birth_date"),
-        weight=data.get("weight"),
-        status=data.get("status", "raising"),
-        purchase_price=data.get("purchase_price"),
-        purchase_date=data.get("purchase_date"),
-        remark=data.get("remark"),
-    )
-    db.add(row)
+    """新增牲畜；支持 count 批量（同属性一次录入 N 头/只，耳标自动编号后缀）"""
+    status = data.get("status", "raising")
+    if status not in LIVESTOCK_STATUS:
+        raise ValueError("status 只能是 %s（品种阶段请用 breed_id 表达，如'黄牛-育肥'）"
+                         % "/".join(LIVESTOCK_STATUS))
+    try:
+        count = int(data.get("count", 1))
+    except (TypeError, ValueError):
+        raise ValueError("count 必须是整数")
+    if not 1 <= count <= 500:
+        raise ValueError("count 取值 1~500")
+    rows = []
+    for i in range(count):
+        ear_tag = data.get("ear_tag")
+        if ear_tag and count > 1:
+            ear_tag = "%s-%d" % (ear_tag, i + 1)
+        rows.append(Livestock(
+            farm_id=farm_id,
+            category=data["category"],
+            breed_id=data.get("breed_id"),
+            ear_tag=ear_tag,
+            birth_date=data.get("birth_date"),
+            weight=data.get("weight"),
+            status=status,
+            purchase_price=data.get("purchase_price"),
+            purchase_date=data.get("purchase_date"),
+            remark=data.get("remark"),
+        ))
+    db.add_all(rows)
     db.commit()
-    return row.id
+    return rows[-1].id
 
 
 def update_livestock(db: Session, livestock_id, farm_id, data: dict):
-    """只允许改自家牧场的牲畜"""
+    """只允许改自家牧场的牲畜；status 同样做枚举校验"""
+    if data.get("status") and data["status"] not in LIVESTOCK_STATUS:
+        raise ValueError("status 只能是 %s" % "/".join(LIVESTOCK_STATUS))
     row = db.query(Livestock).filter(
         Livestock.id == livestock_id, Livestock.farm_id == farm_id).first()
     if not row:

@@ -13,7 +13,15 @@ from service import cost_service
 
 
 def _decide(current_price, cost_line, predicted_price):
-    """核心规则，返回 (action, reason)"""
+    """核心规则，返回 (action, reason)；predicted_price 为 None 时按无预测处理"""
+    if predicted_price is None:
+        if current_price >= cost_line:
+            return "wait", (
+                "当前价 %.2f 元/斤高于成本线 %.2f 元/斤，每头约有利润；"
+                "暂无可用预测，行情稳定时可择机出栏。" % (current_price, cost_line))
+        return "sell_now", (
+            "当前价 %.2f 元/斤已低于成本线 %.2f 元/斤，继续喂养每天还要投入饲料钱；"
+            "暂无可用预测，建议尽快出栏止损。" % (current_price, cost_line))
     if current_price > cost_line and predicted_price < current_price:
         return "sell", (
             "当前价 %.2f 元/斤已高于成本线 %.2f 元/斤，每头约有利润；"

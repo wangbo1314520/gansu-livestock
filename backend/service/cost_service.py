@@ -128,13 +128,17 @@ def save_config(db: Session, farm_id, category, data: dict):
 
 
 def calculate(db: Session, weight, current_price, total_cost,
-              farm_id=None, category="cattle", region_id=None, include_sample=False):
-    """当前出栏利润 + 盈亏平衡价 + 日成本明细"""
+              farm_id=None, category="cattle", region_id=None, include_sample=False,
+              overrides=None):
+    """当前出栏利润 + 盈亏平衡价 + 日成本明细
+    overrides: 可选 {daily_gain, daily_feed_amount, feed_detail}，覆盖牧场/默认配置"""
     cfg = _load_config(db, farm_id, category) if farm_id else {
         "daily_feed_amount": 8.0, "daily_labor_cost": 2.0,
         "daily_other_cost": 1.0, "daily_gain": 1.2,
         "feed_detail": DEFAULT_FEED_DETAIL,
     }
+    if overrides:
+        cfg.update(overrides)
     feed_prices = _feed_price_map(db, region_id, include_sample=include_sample)
     daily_feed = calc_daily_feed_cost(
         cfg["feed_detail"], cfg["daily_feed_amount"], feed_prices)

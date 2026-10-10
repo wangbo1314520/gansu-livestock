@@ -20,7 +20,9 @@ def _home_only():
 @cost_bp.route("/calculate", methods=["POST"])
 def calculate():
     """当前出栏利润计算
-    body: {weight, current_price, total_cost, farm_id?, category?, region_id?}
+    body: {weight, current_price, total_cost, farm_id?, category?, region_id?,
+           daily_gain?, daily_feed_amount?, feed_detail?}  —— 后三个可选，
+    传入时覆盖牧场/默认成本配置（第七轮签名兼容修复）
     """
     if not _home_only():
         return err(403, "成本计算为家用版功能，当前模式未开放")
@@ -38,7 +40,10 @@ def calculate():
             farm_id=data.get("farm_id"),
             category=data.get("category", "cattle"),
             region_id=data.get("region_id"),
-            include_sample=bool(data.get("include_sample", False)))
+            include_sample=bool(data.get("include_sample", False)),
+            overrides={k: data[k] for k in
+                         ("daily_gain", "daily_feed_amount", "feed_detail")
+                         if data.get(k) is not None})
         return ok(result)
     finally:
         db.close()

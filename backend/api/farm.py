@@ -80,6 +80,8 @@ def livestock_add():
     try:
         row_id = farm_service.add_livestock(db, int(farm_id), data)
         return ok({"id": row_id}, msg="新增成功")
+    except ValueError as e:
+        return err(400, str(e))
     finally:
         db.close()
 
@@ -101,6 +103,8 @@ def livestock_update():
         if not farm_service.update_livestock(db, int(data["id"]), int(farm_id), data):
             return err(404, "牲畜不存在")
         return ok(msg="修改成功")
+    except ValueError as e:
+        return err(400, str(e))
     finally:
         db.close()
 
