@@ -8,13 +8,14 @@
       remark 注明反推来源与系数。
 
 系数（2026-10-10 实测，定西 gov 数据同日重叠周平均）：
-  活牛/牛肉 = 0.3888（12 周，取 0.39）
+  活牛/牛肉 = 0.3888（12 周全量）→ 剔除口径混搭周后 0.3822（11 周，取 0.38）
   活羊/羊肉 = 0.4224（10 周，取 0.42）
 用法：
   cd backend
   set DB_PASSWORD=***
   venv\\Scripts\\python.exe scripts\\derive_livestock_price.py
 """
+# 系数依据：docs/反推系数核实.md（活牛0.38剔除口径混搭后均值，活羊0.42）
 import os
 import sys
 
@@ -25,9 +26,9 @@ from model import SessionLocal                                 # noqa: E402
 from model.price import PriceData                              # noqa: E402
 
 REGION_ID = 12          # 定西市
-# (活畜分类, 肉类分类, 实测平均系数)
+# (活畜分类, 肉类分类, 系数)
 DERIVE_PLAN = [
-    (1, 2, 0.39),       # 活牛 <- 牛肉，系数 0.3888≈0.39
+    (1, 2, 0.38),       # 活牛 <- 牛肉，剔口径混搭周后均值 0.3822（首批40条按0.39入库不追溯）
     (3, 4, 0.42),       # 活羊 <- 羊肉，系数 0.4224≈0.42
 ]
 # 系数只用 gov 同日重叠记录实测得出（与脚本头部说明一致）
