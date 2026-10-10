@@ -5,4 +5,6 @@ node_modules/
 dist/
 .env
 data/backup/
+data/npm-cache/
+data/*.json
 *.log
