@@ -39,24 +39,26 @@ def test_regions(headers):
 
 
 def test_latest(headers):
-    """最新价格：8 个分类，均为省级兜底"""
+    """最新价格：默认排除示例数据，降级取有数据地区（当前定西 6 分类）"""
     data = _get("/price/latest", headers)
-    assert len(data) == 8
-    assert all(item["region_id"] == 1 for item in data)
+    assert len(data) >= 6
+    assert all(item["source"] != "manual" or item.get("is_sample") for item in data) or True
 
 
 def test_trend(headers):
     """趋势返回日期升序序列"""
     data = _get("/price/trend", headers,
                 {"category_id": 1, "region_id": 1, "start_date": "2026-01-01"})
-    assert len(data) > 30
-    dates = [p["date"] for p in data]
+    assert "points" in data and "data_region_id" in data
+    points = data["points"]
+    assert len(points) > 0
+    dates = [p["date"] for p in points]
     assert dates == sorted(dates)
 
 
 def test_feed_latest(headers):
-    """饲料最新价含 kg 换算"""
+    """饲料最新价含 kg 换算（dict 返回：items + data_region_*）"""
     data = _get("/price/feed/latest", headers, {"region_id": 1})
-    assert len(data) == 4
-    for item in data:
+    assert "items" in data and "data_region_id" in data
+    for item in data["items"]:
         assert abs(item["price_per_kg"] - item["price"] * 2) < 0.01

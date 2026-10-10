@@ -72,7 +72,8 @@ const option = computed(() => ({
 
 async function loadTrend() {
   if (!feedName.value) return
-  trend.value = await getFeedTrend({ feed_name: feedName.value, region_id: regionId.value })
+  const res = await getFeedTrend({ feed_name: feedName.value, region_id: regionId.value })
+  trend.value = res.points
 }
 
 async function loadList() {
@@ -88,7 +89,8 @@ async function loadList() {
 
 onMounted(async () => {
   regions.value = await getRegions()
-  latest.value = await getLatestFeed({ region_id: 1 })
+  const res = await getLatestFeed({ region_id: 1 })
+  latest.value = res.items
   if (latest.value.length) feedName.value = latest.value[0].feed_name
   loadTrend()
   loadList()

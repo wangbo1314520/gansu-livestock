@@ -77,8 +77,8 @@ def calc_delay_profit(weight, daily_gain, daily_feed_cost, daily_other_cost,
 
 def _feed_price_map(db: Session, region_id, include_sample=False):
     """最新饲料价 {名称: 元/斤}"""
-    items = latest_feed_prices(db, region_id=region_id, include_sample=include_sample)
-    return {i["feed_name"]: i["price"] for i in items}
+    res = latest_feed_prices(db, region_id=region_id, include_sample=include_sample)
+    return {i["feed_name"]: i["price"] for i in res["items"]}
 
 
 def _load_config(db: Session, farm_id, category):

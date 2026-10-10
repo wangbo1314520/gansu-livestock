@@ -7,7 +7,11 @@
       <van-grid-item v-for="p in todayPrices" :key="p.category_id">
         <div class="p-name">{{ p.category_name || p.feed_name }}</div>
         <div class="p-value">{{ p.price }}<small> 元/斤</small></div>
-        <div class="p-date">{{ p.record_date }}</div>
+        <div class="p-date">
+          {{ p.record_date }}
+          <span class="src-tag" :class="'src-' + (p.source || 'manual')"
+                @click.stop>{{ srcLabel(p.source) }}</span>
+        </div>
       </van-grid-item>
     </van-grid>
 
@@ -47,11 +51,13 @@ const dataMode = ref('')   // real=真实周报 sample=示例数据
 const DEFAULT_REGION_ID = 12
 
 // 先取真实数据（默认排除示例），无数据时回退示例数据并标记
+// 兼容两种返回：price/latest 为数组；feed/latest 为 {items: []}
 async function loadWithFallback(fetcher, regionId) {
-  let data = await fetcher({ region_id: regionId })
-  if (Array.isArray(data) && data.length > 0) return { data, sample: false }
-  data = await fetcher({ region_id: regionId, include_sample: true })
-  return { data: Array.isArray(data) ? data : [], sample: true }
+  const pick = (d) => (Array.isArray(d) ? d : (d && d.items) || [])
+  let data = pick(await fetcher({ region_id: regionId }))
+  if (data.length > 0) return { data, sample: false }
+  data = pick(await fetcher({ region_id: regionId, include_sample: true }))
+  return { data, sample: true }
 }
 
 // 首页只展示最关心的四项：活牛、活羊、玉米、豆粕
@@ -63,6 +69,11 @@ const todayPrices = computed(() => {
 
 const alertText = computed(() =>
   `您有 ${unreadAlerts.value} 条价格预警未读，点击查看`)
+
+// 数据来源标签：gov=政府绿 derived=反推灰 index=指数蓝 manual=示例黄
+function srcLabel(s) {
+  return { gov: '政府', derived: '反推', index: '指数', manual: '示例' }[s] || s
+}
 
 onMounted(async () => {
   try {
@@ -85,5 +96,10 @@ onMounted(async () => {
 .p-value { font-size: 26px; font-weight: bold; color: #ee0a24; margin: 4px 0; }
 .p-value small { font-size: 12px; color: #969799; font-weight: normal; }
 .p-date { color: #c8c9cc; font-size: 12px; }
+.src-tag { margin-left: 4px; padding: 0 4px; border-radius: 3px; font-size: 10px; color: #fff; }
+.src-gov { background: #07c160; }
+.src-derived { background: #969799; }
+.src-index { background: #1989fa; }
+.src-manual { background: #ff976a; }
 .src-tip { text-align: center; color: #c8c9cc; font-size: 11px; margin: 0 0 4px; }
 </style>

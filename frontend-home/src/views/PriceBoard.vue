@@ -19,7 +19,9 @@
       <span class="label">最新价</span>
       <span class="value">{{ current.price }}</span>
       <span class="unit">元/斤</span>
-      <span class="date">{{ current.record_date }} · {{ current.region_name }}</span>
+      <span class="date">{{ current.record_date }} · {{ current.region_name }}
+        <span class="src-tag" :class="'src-' + (current.source || 'manual')">{{ srcLabel(current.source) }}</span>
+      </span>
     </div>
 
     <!-- 趋势图 -->
@@ -52,6 +54,10 @@ const allCategories = computed(() => categories.value)
 const current = computed(() =>
   latest.value.find((p) => p.category_id === activeName.value))
 
+function srcLabel(s) {
+  return { gov: '政府', derived: '反推', index: '指数', manual: '示例' }[s] || s
+}
+
 function pctText(v) {
   if (v === null || v === undefined) return '暂无'
   return `${v > 0 ? '涨' : v < 0 ? '跌' : '平'} ${Math.abs(v)}%`
@@ -61,10 +67,11 @@ async function loadTrend() {
   const cat = categories.value.find((c) => c.id === activeName.value)
   if (!cat) return
   const halfYearAgo = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
-  trend.value = await getPriceTrend({
+  const res = await getPriceTrend({
     category_id: cat.id, region_id: 1, start_date: halfYearAgo,
     include_sample: includeSample.value,
   })
+  trend.value = res.points
   yoy.value = await getYoy({
     category_id: cat.id, region_id: 1, include_sample: includeSample.value,
   })
@@ -114,5 +121,10 @@ onBeforeUnmount(() => {
 .value { font-size: 32px; font-weight: bold; color: #ee0a24; }
 .unit { color: #969799; font-size: 13px; }
 .date { color: #c8c9cc; font-size: 12px; margin-left: auto; }
+.src-tag { margin-left: 4px; padding: 0 4px; border-radius: 3px; font-size: 10px; color: #fff; }
+.src-gov { background: #07c160; }
+.src-derived { background: #969799; }
+.src-index { background: #1989fa; }
+.src-manual { background: #ff976a; }
 .chart { height: 320px; background: #fff; margin-top: 2px; }
 </style>

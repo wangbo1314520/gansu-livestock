@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 """
 APScheduler 定时任务：
-  - 每日 07:00 爬饲料价格
-  - 每周一 08:00 爬政府监测价格
-  - 每日 07:30 跑预测并落库
+  - 每周一 09:00 定西周报全量抓取入库（幂等）
+  - 每月1日 09:00 平凉红牛月报抓取入库（幂等）
+  - 每日 07:00 爬饲料价格（TODO）
+  - 每日 07:30 跑预测并落库（TODO）
   - 每小时整点巡检预警规则
-  - 每周日 02:00 备份数据库
-任务体延迟导入，避免循环依赖；爬虫/预测实现就位前只打日志
+  - 每周日 02:00 备份数据库（TODO）
+任务体延迟导入，避免循环依赖
 """
+import os
+import subprocess
+import sys
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -16,19 +21,33 @@ from utils.logger import get_logger
 logger = get_logger("scheduler")
 _scheduler = None
 
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))      # backend/utils -> 项目根
+
+
+def _run_spider_script(relpath, args=None):
+    """以子进程运行项目 scripts/ 下的爬虫入库脚本（幂等，重复执行只补新数据）"""
+    cmd = [sys.executable, os.path.join(_PROJECT_ROOT, relpath)] + (args or [])
+    try:
+        out = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=1800, cwd=_PROJECT_ROOT)
+        tail = (out.stdout or out.stderr or "").strip()[-300:]
+        logger.info("[定时任务] %s 退出码 %s | %s", relpath, out.returncode, tail)
+    except Exception as e:
+        logger.error("[定时任务] %s 执行失败: %s", relpath, e)
+
 
 def crawl_price_job():
-    """每周一 08:00 爬取政府价格监测数据"""
-    logger.info("[定时任务] 爬取政府价格监测数据开始")
-    try:
-        # TODO: 阶段3 爬虫就位后取消注释
-        # import sys, os
-        # sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        # from spider.gov_spider import GovSpider
-        # GovSpider().run()
-        logger.info("[定时任务] 爬取政府价格监测数据完成（爬虫未接入，跳过）")
-    except Exception as e:
-        logger.error("[定时任务] 爬取政府价格监测数据失败: %s", e)
+    """每周一 09:00 定西畜牧局周报全量抓取（scripts/import_dingxi.py，幂等）"""
+    logger.info("[定时任务] 定西周报抓取开始")
+    _run_spider_script("scripts/import_dingxi.py", ["229"])
+
+
+def crawl_pingliang_job():
+    """每月1日 09:00 平凉红牛指数月报抓取（scripts/import_pingliang.py，幂等）"""
+    logger.info("[定时任务] 平凉红牛月报抓取开始")
+    _run_spider_script("scripts/import_pingliang.py", ["6"])
 
 
 def crawl_feed_job():
@@ -85,8 +104,10 @@ def start_scheduler():
         return _scheduler
     _scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
 
-    _scheduler.add_job(crawl_price_job, CronTrigger(day_of_week="mon", hour=8, minute=0),
+    _scheduler.add_job(crawl_price_job, CronTrigger(day_of_week="mon", hour=9, minute=0),
                        id="crawl_price", replace_existing=True)
+    _scheduler.add_job(crawl_pingliang_job, CronTrigger(day=1, hour=9, minute=0),
+                       id="crawl_pingliang", replace_existing=True)
     _scheduler.add_job(crawl_feed_job, CronTrigger(hour=7, minute=0),
                        id="crawl_feed", replace_existing=True)
     _scheduler.add_job(predict_job, CronTrigger(hour=7, minute=30),

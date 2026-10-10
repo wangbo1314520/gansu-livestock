@@ -3,6 +3,7 @@
 饲料价格业务：复用 price_data 表，分类 type='feed'
 （玉米、豆粕、麸皮、苜蓿草）
 """
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from model.price import PriceCategory, PriceData, Region
@@ -64,31 +65,58 @@ def feed_trend(db: Session, feed_name, region_id, start_date=None, end_date=None
 
 
 def latest_feed_prices(db: Session, region_id=None, include_sample=False):
-    """最新饲料价格：四种饲料各取最近一条，外加 kg/斤 换算参考"""
-    items = []
-    for cat in _feed_categories(db):
-        q = db.query(PriceData, Region.name) \
-            .join(Region, PriceData.region_id == Region.id) \
-            .filter(PriceData.category_id == cat.id)
-        q = _apply_sample_filter(q, include_sample)
-        if region_id:
-            q = q.filter(PriceData.region_id == region_id)
-        row = q.order_by(PriceData.record_date.desc()).first()
-        if row:
-            p, region_name = row
-            price_per_jin = float(p.price)            # 元/斤
-            items.append({
-                "category_id": cat.id,
-                "feed_name": cat.name,
-                "region_id": p.region_id,
-                "region_name": region_name,
-                "price": price_per_jin,
-                "price_per_kg": round(price_per_jin * 2, 2),   # 成本计算用 元/kg
-                "unit": cat.unit,
-                "record_date": str(p.record_date),
-                "source": p.source,
-            })
-    return items
+    """最新饲料价格：{items: 各饲料最近一条, data_region_id, data_region_name}
+    指定地区无数据时自动回退到饲料分类最近有数据的地区"""
+    def _query(rid):
+        out = []
+        for cat in _feed_categories(db):
+            q = db.query(PriceData, Region.name) \
+                .join(Region, PriceData.region_id == Region.id) \
+                .filter(PriceData.category_id == cat.id)
+            q = _apply_sample_filter(q, include_sample)
+            if rid:
+                q = q.filter(PriceData.region_id == rid)
+            row = q.order_by(PriceData.record_date.desc()).first()
+            if row:
+                p, region_name = row
+                price_per_jin = float(p.price)        # 元/斤
+                out.append({
+                    "category_id": cat.id,
+                    "feed_name": cat.name,
+                    "region_id": p.region_id,
+                    "region_name": region_name,
+                    "price": price_per_jin,
+                    "price_per_kg": round(price_per_jin * 2, 2),   # 成本计算用 元/kg
+                    "unit": cat.unit,
+                    "record_date": str(p.record_date),
+                    "source": p.source,
+                })
+        return out
+
+    items = _query(region_id)
+    data_region_id = region_id
+    if region_id and not items:
+        # 动态回退：饲料分类里最近有数据的地区（不硬编码）
+        alt = db.query(PriceData.region_id, func.max(PriceData.record_date)) \
+            .join(PriceCategory, PriceData.category_id == PriceCategory.id) \
+            .filter(PriceCategory.type == "feed")
+        alt = _apply_sample_filter(alt, include_sample)
+        alt = alt.filter(PriceData.region_id != region_id) \
+            .group_by(PriceData.region_id) \
+            .order_by(func.max(PriceData.record_date).desc()).first()
+        if alt:
+            data_region_id = alt[0]
+            items = _query(data_region_id)
+    region = db.query(Region).get(data_region_id) if data_region_id else None
+    if not region and items:
+        # 未指定地区时，data_region 取最新一条数据所在地区
+        data_region_id = items[0]["region_id"]
+        region = db.query(Region).get(data_region_id)
+    return {
+        "items": items,
+        "data_region_id": data_region_id,
+        "data_region_name": region.name if region else None,
+    }
 
 
 def add_feed_price(db: Session, data: dict, user_id=None):

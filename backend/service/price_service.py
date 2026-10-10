@@ -77,26 +77,62 @@ def query_prices(db: Session, region_id=None, category_id=None, breed_id=None,
     return items, total
 
 
+def _region_with_data(db, category_id, exclude_region=None, include_sample=False):
+    """动态查找该分类最近有数据的地区（不硬编码），返回 region_id 或 None"""
+    q = db.query(
+        PriceData.region_id, func.max(PriceData.record_date)
+    ).filter(PriceData.category_id == category_id)
+    q = _apply_sample_filter(q, include_sample)
+    if exclude_region:
+        q = q.filter(PriceData.region_id != exclude_region)
+    row = q.group_by(PriceData.region_id).order_by(
+        func.max(PriceData.record_date).desc()).first()
+    return row[0] if row else None
+
+
 def get_trend(db: Session, category_id, region_id, start_date=None, end_date=None,
               include_sample=False):
-    """趋势数据：按日期升序的 [{date, price}] 序列（同日多来源取均价）"""
-    q = db.query(
-        PriceData.record_date,
-        func.avg(PriceData.price).label("avg_price"),
-    ).filter(
-        PriceData.category_id == category_id,
-        PriceData.region_id == region_id,
-    )
-    q = _apply_sample_filter(q, include_sample)
-    if start_date:
-        q = q.filter(PriceData.record_date >= start_date)
-    if end_date:
-        q = q.filter(PriceData.record_date <= end_date)
-    rows = q.group_by(PriceData.record_date).order_by(PriceData.record_date).all()
-    return [
-        {"date": str(r.record_date), "price": round(float(r.avg_price), 2)}
-        for r in rows
-    ]
+    """趋势数据：{points: [{date, price}], data_region_id, data_region_name, fallback}
+    指定地区无数据时自动回退到该分类最近有数据的地区（数据源地区在返回中告知）"""
+    def _query(rid):
+        q = db.query(
+            PriceData.record_date,
+            func.avg(PriceData.price).label("avg_price"),
+            func.group_concat(PriceData.source.distinct()).label("sources"),
+        ).filter(
+            PriceData.category_id == category_id,
+            PriceData.region_id == rid,
+        )
+        q = _apply_sample_filter(q, include_sample)
+        if start_date:
+            q = q.filter(PriceData.record_date >= start_date)
+        if end_date:
+            q = q.filter(PriceData.record_date <= end_date)
+        return q.group_by(PriceData.record_date).order_by(PriceData.record_date).all()
+
+    rows = _query(region_id)
+    data_region_id, fallback = region_id, False
+    if not rows:
+        alt = _region_with_data(db, category_id, exclude_region=region_id,
+                                include_sample=include_sample)
+        if alt:
+            rows = _query(alt)
+            data_region_id, fallback = alt, True
+    region = db.query(Region).get(data_region_id) if data_region_id else None
+    return {
+        "points": [
+            {
+                "date": str(r.record_date),
+                "price": round(float(r.avg_price), 2),
+                # 该日期的数据来源集合：gov / derived / index / manual（多来源逗号分隔）
+                "source": (r.sources or "").split(",")[0] if r.sources else None,
+            }
+            for r in rows
+        ],
+        "data_region_id": data_region_id,
+        "data_region_name": region.name if region else None,
+        "fallback": fallback,
+    }
 
 
 def get_compare(db: Session, category_id, region_ids, start_date=None, end_date=None,
@@ -164,6 +200,7 @@ def get_latest(db: Session, region_id=None, type_=None, include_sample=False):
                 "price": float(price_data.price),
                 "record_date": str(price_data.record_date),
                 "source": price_data.source,
+                "source_detail": price_data.source_detail,
             })
     return items
 

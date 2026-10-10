@@ -56,28 +56,41 @@ const categories = ref([])
 
 const livestockCategories = computed(() => categories.value.filter((c) => c.type === 'livestock'))
 
+// 按点来源拆两条序列（与共享 x 轴全长度对齐，非本系列的点置 null）
+const isDerived = (p) => (p.source || '').includes('derived')
+
 const option = computed(() => ({
   tooltip: { trigger: 'axis' },
+  legend: { data: ['实际观测', '反推补全'] },
   xAxis: { type: 'category', data: trend.value.map((p) => p.date) },
   yAxis: { type: 'value', name: '元/斤', scale: true },
   dataZoom: [{ type: 'inside' }, { type: 'slider' }],
-  series: [{ type: 'line', smooth: true, symbol: 'none',
-             data: trend.value.map((p) => p.price),
-             markPoint: {
-               data: [
-                 { type: 'max', name: '最高' },
-                 { type: 'min', name: '最低' },
-               ],
-             } }],
-  grid: { left: 50, right: 20, top: 30, bottom: 50 },
+  series: [
+    { name: '实际观测', type: 'line', smooth: true, symbol: 'circle',
+      connectNulls: false,
+      data: trend.value.map((p) => (isDerived(p) ? null : p.price)),
+      markPoint: {
+        data: [
+          { type: 'max', name: '最高' },
+          { type: 'min', name: '最低' },
+        ],
+      } },
+    { name: '反推补全', type: 'line', smooth: true, symbol: 'diamond', symbolSize: 7,
+      connectNulls: true,
+      lineStyle: { type: 'dashed', color: '#909399' },
+      itemStyle: { color: '#909399' },
+      data: trend.value.map((p) => (isDerived(p) ? p.price : null)) },
+  ],
+  grid: { left: 50, right: 20, top: 40, bottom: 50 },
 }))
 
 async function load() {
   const startDate = new Date(Date.now() - Number(range.value) * 86400000).toISOString().slice(0, 10)
-  trend.value = await getPriceTrend({
+  const res = await getPriceTrend({
     category_id: categoryId.value, region_id: regionId.value, start_date: startDate,
     include_sample: includeSample.value,
   })
+  trend.value = res.points
   yoy.value = await getYoy({
     category_id: categoryId.value, region_id: regionId.value,
     include_sample: includeSample.value,
