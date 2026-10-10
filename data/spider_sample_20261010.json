@@ -1,0 +1,101 @@
+[
+  {
+    "region": "张掖市",
+    "category": "生猪",
+    "price": 10.7,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十四周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十四周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "仔猪",
+    "price": 20.7,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十四周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十四周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "屠宰企业白条猪",
+    "price": 14.0,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十四周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十四周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "生猪",
+    "price": 10.8,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十三周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十三周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "仔猪",
+    "price": 21.0,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十三周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十三周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "屠宰企业白条猪",
+    "price": 14.5,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十三周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十三周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "生猪",
+    "price": 10.7,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十二周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十二周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "仔猪",
+    "price": 21.4,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十二周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十二周猪肉价格周报"
+  },
+  {
+    "region": "张掖市",
+    "category": "屠宰企业白条猪",
+    "price": 15.2,
+    "unit": "元/公斤",
+    "date": "2026-09-20",
+    "source": "gov",
+    "source_detail": "张掖市畜牧兽医局价格周报(第三十二周猪肉价格周)",
+    "breed": null,
+    "report_title": "张掖市畜牧兽医局-张掖市2026年第三十二周猪肉价格周报"
+  }
+]
