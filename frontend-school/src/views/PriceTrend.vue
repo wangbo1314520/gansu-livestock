@@ -18,6 +18,9 @@
           <el-radio-button value="365">近一年</el-radio-button>
         </el-radio-group>
       </el-form-item>
+      <el-form-item label="包含示例数据">
+        <el-switch v-model="includeSample" @change="load" />
+      </el-form-item>
     </el-form>
 
     <ChartCard title="价格趋势" :option="option" :height="420" />
@@ -45,6 +48,7 @@ import { getRegions, getCategories } from '../api/auth'
 const categoryId = ref(1)
 const regionId = ref(1)
 const range = ref('365')
+const includeSample = ref(false)
 const trend = ref([])
 const yoy = ref(null)
 const regions = ref([])
@@ -72,9 +76,11 @@ async function load() {
   const startDate = new Date(Date.now() - Number(range.value) * 86400000).toISOString().slice(0, 10)
   trend.value = await getPriceTrend({
     category_id: categoryId.value, region_id: regionId.value, start_date: startDate,
+    include_sample: includeSample.value,
   })
   yoy.value = await getYoy({
     category_id: categoryId.value, region_id: regionId.value,
+    include_sample: includeSample.value,
   })
 }
 

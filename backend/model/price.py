@@ -23,12 +23,13 @@ class Region(Base):
 
 
 class Breed(Base):
-    """品种表：牛/羊品种"""
+    """品种表：牛/羊品种；stage 支持品种+阶段细分（NULL=不细分的基础品种）"""
     __tablename__ = "breed"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="品种ID")
     name = Column(String(50), nullable=False, unique=True, comment="品种名称")
     category = Column(String(20), nullable=False, comment="类别：cattle=牛 sheep=羊")
+    stage = Column(String(20), comment="阶段：bull种公牛 cow母牛 calf牛犊 fattening育肥 ram种公羊 ewe母羊 lamb羊羔")
     remark = Column(String(200), comment="备注，产地特点")
     created_at = Column(DateTime, nullable=False, default=datetime.now, comment="创建时间")
 
@@ -64,6 +65,8 @@ class PriceData(Base):
     unit = Column(String(20), nullable=False, default="元/斤", comment="计价单位")
     source = Column(String(50), nullable=False, comment="gov政府 manual手工 dealer贩子 market市场 self自家")
     source_detail = Column(String(100), comment="来源明细")
+    is_sample = Column(Integer, nullable=False, default=0,
+                       comment="1=示例数据 0=真实数据")
     record_date = Column(Date, nullable=False, comment="价格所属日期")
     user_id = Column(Integer, comment="录入用户ID")
     farm_id = Column(Integer, comment="牧场ID")

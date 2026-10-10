@@ -8,3 +8,5 @@ data/backup/
 data/npm-cache/
 data/*.json
 *.log
+logs/*.out
+backend/logs/*.out

@@ -10,6 +10,13 @@ from sqlalchemy.orm import Session
 from model.price import Breed, PriceCategory, PriceData, Region
 
 
+def _apply_sample_filter(q, include_sample=False):
+    """默认排除示例数据（is_sample=1）；include_sample=True 时不过滤"""
+    if not include_sample:
+        q = q.filter(PriceData.is_sample == 0)
+    return q
+
+
 def _row_to_dict(row):
     """查询结果行转字典（含地区名、分类名、品种名）"""
     d = {
@@ -32,14 +39,15 @@ def _row_to_dict(row):
 
 def query_prices(db: Session, region_id=None, category_id=None, breed_id=None,
                  source=None, start_date=None, end_date=None,
-                 page=1, page_size=20):
-    """分页查询价格数据，支持多条件筛选"""
+                 page=1, page_size=20, include_sample=False):
+    """分页查询价格数据，支持多条件筛选；默认只查真实数据"""
     q = (
         db.query(PriceData, Region.name, PriceCategory.name, Breed.name)
         .join(Region, PriceData.region_id == Region.id)
         .join(PriceCategory, PriceData.category_id == PriceCategory.id)
         .outerjoin(Breed, PriceData.breed_id == Breed.id)
     )
+    q = _apply_sample_filter(q, include_sample)
     if region_id:
         q = q.filter(PriceData.region_id == region_id)
     if category_id:
@@ -69,7 +77,8 @@ def query_prices(db: Session, region_id=None, category_id=None, breed_id=None,
     return items, total
 
 
-def get_trend(db: Session, category_id, region_id, start_date=None, end_date=None):
+def get_trend(db: Session, category_id, region_id, start_date=None, end_date=None,
+              include_sample=False):
     """趋势数据：按日期升序的 [{date, price}] 序列（同日多来源取均价）"""
     q = db.query(
         PriceData.record_date,
@@ -78,6 +87,7 @@ def get_trend(db: Session, category_id, region_id, start_date=None, end_date=Non
         PriceData.category_id == category_id,
         PriceData.region_id == region_id,
     )
+    q = _apply_sample_filter(q, include_sample)
     if start_date:
         q = q.filter(PriceData.record_date >= start_date)
     if end_date:
@@ -89,7 +99,8 @@ def get_trend(db: Session, category_id, region_id, start_date=None, end_date=Non
     ]
 
 
-def get_compare(db: Session, category_id, region_ids, start_date=None, end_date=None):
+def get_compare(db: Session, category_id, region_ids, start_date=None, end_date=None,
+                include_sample=False):
     """地区对比：多个地区同期价格对比 [{region_id, region_name, avg_price}]"""
     results = []
     for rid in region_ids:
@@ -97,6 +108,7 @@ def get_compare(db: Session, category_id, region_ids, start_date=None, end_date=
             PriceData.category_id == category_id,
             PriceData.region_id == rid,
         )
+        q = _apply_sample_filter(q, include_sample)
         if start_date:
             q = q.filter(PriceData.record_date >= start_date)
         if end_date:
@@ -111,7 +123,7 @@ def get_compare(db: Session, category_id, region_ids, start_date=None, end_date=
     return results
 
 
-def get_latest(db: Session, region_id=None, type_=None):
+def get_latest(db: Session, region_id=None, type_=None, include_sample=False):
     """最新价格：每个分类取最近一条（可选只看牲畜/饲料）
     地区规则：
       - 未传 region_id -> 默认省级（region_id=1）
@@ -131,13 +143,15 @@ def get_latest(db: Session, region_id=None, type_=None):
             PriceData.category_id == cat.id,
             PriceData.region_id == region_id,
         )
+        q = _apply_sample_filter(q, include_sample)
         row = q.order_by(PriceData.record_date.desc()).first()
         if not row:
-            # 指定地区无数据：降级取该分类最新一条（不限地区）
-            row = (db.query(PriceData, Region.name)
-                   .join(Region, PriceData.region_id == Region.id)
-                   .filter(PriceData.category_id == cat.id)
-                   .order_by(PriceData.record_date.desc()).first())
+            # 指定地区无数据：降级取该分类最新一条（不限地区，同样尊重示例过滤）
+            fallback = (db.query(PriceData, Region.name)
+                        .join(Region, PriceData.region_id == Region.id)
+                        .filter(PriceData.category_id == cat.id))
+            fallback = _apply_sample_filter(fallback, include_sample)
+            row = fallback.order_by(PriceData.record_date.desc()).first()
         if row:
             price_data, region_name = row
             items.append({
@@ -154,17 +168,19 @@ def get_latest(db: Session, region_id=None, type_=None):
     return items
 
 
-def get_yoy(db: Session, category_id, region_id, ref_date=None):
+def get_yoy(db: Session, category_id, region_id, ref_date=None, include_sample=False):
     """同比环比：给定日期与上月、去年同期对比"""
     ref = datetime.strptime(ref_date, "%Y-%m-%d").date() if ref_date else date.today()
 
     def _avg(begin, end):
-        v = db.query(func.avg(PriceData.price)).filter(
+        q = db.query(func.avg(PriceData.price)).filter(
             PriceData.category_id == category_id,
             PriceData.region_id == region_id,
             PriceData.record_date >= begin,
             PriceData.record_date <= end,
-        ).scalar()
+        )
+        q = _apply_sample_filter(q, include_sample)
+        v = q.scalar()
         return float(v) if v is not None else None
 
     current = _avg(ref - timedelta(days=6), ref)                     # 近7天均价
@@ -243,11 +259,11 @@ def import_prices(db: Session, rows: list, user_id=None):
 
 
 def export_rows(db: Session, region_id=None, category_id=None,
-                start_date=None, end_date=None):
+                start_date=None, end_date=None, include_sample=False):
     """导出查询结果（返回字典列表，API 层转 CSV）"""
     items, _ = query_prices(db, region_id=region_id, category_id=category_id,
                             start_date=start_date, end_date=end_date,
-                            page=1, page_size=100000)
+                            page=1, page_size=100000, include_sample=include_sample)
     return items
 
 
@@ -257,6 +273,6 @@ def get_base_data(db: Session):
                for r in db.query(Region).order_by(Region.id).all()]
     categories = [{"id": c.id, "name": c.name, "type": c.type, "unit": c.unit}
                   for c in db.query(PriceCategory).order_by(PriceCategory.sort_order).all()]
-    breeds = [{"id": b.id, "name": b.name, "category": b.category}
+    breeds = [{"id": b.id, "name": b.name, "category": b.category, "stage": b.stage}
               for b in db.query(Breed).order_by(Breed.id).all()]
     return {"regions": regions, "categories": categories, "breeds": breeds}

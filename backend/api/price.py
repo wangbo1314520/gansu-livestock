@@ -27,6 +27,7 @@ def _parse_common_params():
         "end_date": args.get("end_date"),
         "page": int(args.get("page", 1)),
         "page_size": int(args.get("page_size", 20)),
+        "include_sample": args.get("include_sample", "false").lower() in ("1", "true", "yes"),
     }
 
 
@@ -56,6 +57,7 @@ def trend():
             region_id=int(args["region_id"]),
             start_date=args.get("start_date"),
             end_date=args.get("end_date"),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"),
         )
         return ok(data)
     finally:
@@ -73,7 +75,8 @@ def compare():
     try:
         data = price_service.get_compare(
             db, category_id=int(args["category_id"]), region_ids=region_ids,
-            start_date=args.get("start_date"), end_date=args.get("end_date"))
+            start_date=args.get("start_date"), end_date=args.get("end_date"),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         return ok(data)
     finally:
         db.close()
@@ -89,6 +92,7 @@ def latest():
             db,
             region_id=int(args["region_id"]) if args.get("region_id") else None,
             type_=args.get("type"),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"),
         )
         return ok(data)
     finally:
@@ -106,7 +110,8 @@ def yoy():
         data = price_service.get_yoy(
             db, category_id=int(args["category_id"]),
             region_id=int(args["region_id"]),
-            ref_date=args.get("ref_date"))
+            ref_date=args.get("ref_date"),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         return ok(data)
     finally:
         db.close()
@@ -187,7 +192,8 @@ def export():
             region_id=int(args["region_id"]) if args.get("region_id") else None,
             category_id=int(args["category_id"]) if args.get("category_id") else None,
             start_date=args.get("start_date"),
-            end_date=args.get("end_date"))
+            end_date=args.get("end_date"),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(["日期", "地区", "分类", "品种", "价格", "单位", "来源", "来源明细"])

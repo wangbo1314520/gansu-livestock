@@ -37,7 +37,8 @@ def calculate():
             total_cost=float(data["total_cost"]),
             farm_id=data.get("farm_id"),
             category=data.get("category", "cattle"),
-            region_id=data.get("region_id"))
+            region_id=data.get("region_id"),
+            include_sample=bool(data.get("include_sample", False)))
         return ok(result)
     finally:
         db.close()
@@ -64,7 +65,8 @@ def delay():
             current_price=float(data["current_price"]),
             farm_id=data.get("farm_id"),
             category=data.get("category", "cattle"),
-            region_id=data.get("region_id"))
+            region_id=data.get("region_id"),
+            include_sample=bool(data.get("include_sample", False)))
         return ok(result)
     finally:
         db.close()

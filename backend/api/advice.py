@@ -25,6 +25,7 @@ def _parse_params(source):
         "farm_id": source.get("farm_id"),
         "category": source.get("category", "cattle"),
         "region_id": source.get("region_id"),
+        "include_sample": str(source.get("include_sample", "false")).lower() in ("1", "true", "yes"),
     }, None
 
 

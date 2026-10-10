@@ -25,7 +25,8 @@ def feed_list():
             start_date=args.get("start_date"),
             end_date=args.get("end_date"),
             page=int(args.get("page", 1)),
-            page_size=int(args.get("page_size", 20)))
+            page_size=int(args.get("page_size", 20)),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         return ok(page_data(items, total,
                             int(args.get("page", 1)), int(args.get("page_size", 20))))
     finally:
@@ -43,7 +44,8 @@ def feed_trend():
         data = feed_service.feed_trend(
             db, feed_name=args["feed_name"],
             region_id=int(args["region_id"]),
-            start_date=args.get("start_date"), end_date=args.get("end_date"))
+            start_date=args.get("start_date"), end_date=args.get("end_date"),
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         return ok(data)
     finally:
         db.close()
@@ -56,7 +58,8 @@ def feed_latest():
     db = SessionLocal()
     try:
         data = feed_service.latest_feed_prices(
-            db, region_id=int(args["region_id"]) if args.get("region_id") else None)
+            db, region_id=int(args["region_id"]) if args.get("region_id") else None,
+            include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         return ok(data)
     finally:
         db.close()

@@ -7,6 +7,13 @@
       <van-tab v-for="c in allCategories" :key="c.id" :title="c.name" :name="c.id" />
     </van-tabs>
 
+    <!-- 示例数据开关（默认关闭，只看真实数据） -->
+    <van-cell center title="包含示例数据">
+      <template #right-icon>
+        <van-switch v-model="includeSample" size="20" @change="reload" />
+      </template>
+    </van-cell>
+
     <!-- 最新价 -->
     <div class="current" v-if="current">
       <span class="label">最新价</span>
@@ -33,6 +40,7 @@ import { getCategories } from '../api/auth'
 import { getLatestPrices, getPriceTrend, getYoy } from '../api/price'
 
 const activeName = ref(1)
+const includeSample = ref(false)
 const categories = ref([])
 const latest = ref([])
 const trend = ref([])
@@ -55,9 +63,17 @@ async function loadTrend() {
   const halfYearAgo = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
   trend.value = await getPriceTrend({
     category_id: cat.id, region_id: 1, start_date: halfYearAgo,
+    include_sample: includeSample.value,
   })
-  yoy.value = await getYoy({ category_id: cat.id, region_id: 1 })
+  yoy.value = await getYoy({
+    category_id: cat.id, region_id: 1, include_sample: includeSample.value,
+  })
   renderChart(cat.name)
+}
+
+async function reload() {
+  latest.value = await getLatestPrices({ region_id: 1, include_sample: includeSample.value })
+  await loadTrend()
 }
 
 function renderChart(name) {
@@ -76,7 +92,7 @@ function renderChart(name) {
 
 onMounted(async () => {
   categories.value = await getCategories()
-  latest.value = await getLatestPrices({ region_id: 1 })
+  latest.value = await getLatestPrices({ region_id: 1, include_sample: includeSample.value })
   if (categories.value.length) {
     activeName.value = categories.value[0].id
     await loadTrend()

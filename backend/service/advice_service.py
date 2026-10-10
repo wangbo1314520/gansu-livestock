@@ -44,7 +44,8 @@ ACTION_CN = {
 
 
 def sell_advice(db: Session, weight, current_price, total_cost,
-                predicted_price, farm_id=None, category="cattle", region_id=None):
+                predicted_price, farm_id=None, category="cattle", region_id=None,
+                include_sample=False):
     """
     完整出栏建议：
       成本线 = total_cost / (weight*2)
@@ -56,7 +57,8 @@ def sell_advice(db: Session, weight, current_price, total_cost,
     delay = cost_service.delay_calculate(
         db, weight=weight, days=30,
         predicted_price=predicted_price, current_price=current_price,
-        farm_id=farm_id, category=category, region_id=region_id)
+        farm_id=farm_id, category=category, region_id=region_id,
+        include_sample=include_sample)
     profit_now = cost_service.calc_profit(weight, current_price, total_cost)
 
     return {
@@ -73,10 +75,12 @@ def sell_advice(db: Session, weight, current_price, total_cost,
 
 
 def advice_reason(db: Session, weight, current_price, total_cost,
-                  predicted_price, farm_id=None, category="cattle", region_id=None):
+                  predicted_price, farm_id=None, category="cattle", region_id=None,
+                  include_sample=False):
     """建议理由（家用版 /api/advice/reason）"""
     result = sell_advice(db, weight, current_price, total_cost,
-                         predicted_price, farm_id, category, region_id)
+                         predicted_price, farm_id, category, region_id,
+                         include_sample=include_sample)
     return {
         "action_cn": result["action_cn"],
         "reason": result["reason"],

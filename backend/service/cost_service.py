@@ -75,9 +75,9 @@ def calc_delay_profit(weight, daily_gain, daily_feed_cost, daily_other_cost,
 # 组合服务：取实时饲料价 + 牧场成本配置，给出完整计算结果
 # ------------------------------------------------------------------
 
-def _feed_price_map(db: Session, region_id):
+def _feed_price_map(db: Session, region_id, include_sample=False):
     """最新饲料价 {名称: 元/斤}"""
-    items = latest_feed_prices(db, region_id=region_id)
+    items = latest_feed_prices(db, region_id=region_id, include_sample=include_sample)
     return {i["feed_name"]: i["price"] for i in items}
 
 
@@ -123,14 +123,14 @@ def save_config(db: Session, farm_id, category, data: dict):
 
 
 def calculate(db: Session, weight, current_price, total_cost,
-              farm_id=None, category="cattle", region_id=None):
+              farm_id=None, category="cattle", region_id=None, include_sample=False):
     """当前出栏利润 + 盈亏平衡价 + 日成本明细"""
     cfg = _load_config(db, farm_id, category) if farm_id else {
         "daily_feed_amount": 8.0, "daily_labor_cost": 2.0,
         "daily_other_cost": 1.0, "daily_gain": 1.2,
         "feed_detail": DEFAULT_FEED_DETAIL,
     }
-    feed_prices = _feed_price_map(db, region_id)
+    feed_prices = _feed_price_map(db, region_id, include_sample=include_sample)
     daily_feed = calc_daily_feed_cost(
         cfg["feed_detail"], cfg["daily_feed_amount"], feed_prices)
 
@@ -149,14 +149,14 @@ def calculate(db: Session, weight, current_price, total_cost,
 
 
 def delay_calculate(db: Session, weight, days, predicted_price, current_price,
-                    farm_id=None, category="cattle", region_id=None):
+                    farm_id=None, category="cattle", region_id=None, include_sample=False):
     """压栏 N 天利润对比（需求文档 7.4）"""
     cfg = _load_config(db, farm_id, category) if farm_id else {
         "daily_feed_amount": 8.0, "daily_labor_cost": 2.0,
         "daily_other_cost": 1.0, "daily_gain": 1.2,
         "feed_detail": DEFAULT_FEED_DETAIL,
     }
-    feed_prices = _feed_price_map(db, region_id)
+    feed_prices = _feed_price_map(db, region_id, include_sample=include_sample)
     daily_feed = calc_daily_feed_cost(
         cfg["feed_detail"], cfg["daily_feed_amount"], feed_prices)
 

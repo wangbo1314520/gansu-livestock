@@ -11,6 +11,10 @@
       </van-grid-item>
     </van-grid>
 
+    <!-- 数据来源提示（不显眼） -->
+    <div class="src-tip" v-if="dataMode === 'real'">当前显示定西周报数据</div>
+    <div class="src-tip" v-else-if="dataMode === 'sample'">当前显示示例数据</div>
+
     <!-- 预警提醒 -->
     <van-notice-bar left-icon="warning-o" :text="alertText" color="#ed6a0c"
                     background="#fffbe8" v-if="unreadAlerts > 0" />
@@ -37,6 +41,18 @@ import { getRecords } from '../api/alert'
 const latest = ref([])
 const feed = ref([])
 const unreadAlerts = ref(0)
+const dataMode = ref('')   // real=真实周报 sample=示例数据
+
+// 目前只有定西有真实牛羊+饲料周报数据，首页默认取定西
+const DEFAULT_REGION_ID = 12
+
+// 先取真实数据（默认排除示例），无数据时回退示例数据并标记
+async function loadWithFallback(fetcher, regionId) {
+  let data = await fetcher({ region_id: regionId })
+  if (Array.isArray(data) && data.length > 0) return { data, sample: false }
+  data = await fetcher({ region_id: regionId, include_sample: true })
+  return { data: Array.isArray(data) ? data : [], sample: true }
+}
 
 // 首页只展示最关心的四项：活牛、活羊、玉米、豆粕
 const todayPrices = computed(() => {
@@ -50,11 +66,12 @@ const alertText = computed(() =>
 
 onMounted(async () => {
   try {
-    latest.value = await getLatestPrices({ region_id: 1 })
+    const a = await loadWithFallback(getLatestPrices, DEFAULT_REGION_ID)
+    latest.value = a.data
+    const b = await loadWithFallback(getLatestFeed, DEFAULT_REGION_ID)
+    feed.value = b.data
+    dataMode.value = (a.sample || b.sample) ? 'sample' : 'real'
   } catch (e) { /* 后端未起时空展示 */ }
-  try {
-    feed.value = await getLatestFeed({ region_id: 1 })
-  } catch (e) { /* 同上 */ }
   try {
     const data = await getRecords({ is_read: 0, page: 1, page_size: 1 })
     unreadAlerts.value = data.total
@@ -68,4 +85,5 @@ onMounted(async () => {
 .p-value { font-size: 26px; font-weight: bold; color: #ee0a24; margin: 4px 0; }
 .p-value small { font-size: 12px; color: #969799; font-weight: normal; }
 .p-date { color: #c8c9cc; font-size: 12px; }
+.src-tip { text-align: center; color: #c8c9cc; font-size: 11px; margin: 0 0 4px; }
 </style>

@@ -6,7 +6,7 @@
 from sqlalchemy.orm import Session
 
 from model.price import PriceCategory, PriceData, Region
-from service.price_service import get_trend as _get_price_trend
+from service.price_service import _apply_sample_filter, get_trend as _get_price_trend
 
 
 def _feed_categories(db: Session):
@@ -16,7 +16,8 @@ def _feed_categories(db: Session):
 
 
 def list_feed_prices(db: Session, feed_name=None, region_id=None,
-                     start_date=None, end_date=None, page=1, page_size=20):
+                     start_date=None, end_date=None, page=1, page_size=20,
+                     include_sample=False):
     """饲料价格分页列表"""
     q = (
         db.query(PriceData, Region.name, PriceCategory.name)
@@ -24,6 +25,7 @@ def list_feed_prices(db: Session, feed_name=None, region_id=None,
         .join(PriceCategory, PriceData.category_id == PriceCategory.id)
         .filter(PriceCategory.type == "feed")
     )
+    q = _apply_sample_filter(q, include_sample)
     if feed_name:
         q = q.filter(PriceCategory.name == feed_name)
     if region_id:
@@ -49,23 +51,26 @@ def list_feed_prices(db: Session, feed_name=None, region_id=None,
     return items, total
 
 
-def feed_trend(db: Session, feed_name, region_id, start_date=None, end_date=None):
+def feed_trend(db: Session, feed_name, region_id, start_date=None, end_date=None,
+               include_sample=False):
     """单个饲料的价格趋势"""
     cat = db.query(PriceCategory).filter(
         PriceCategory.name == feed_name, PriceCategory.type == "feed").first()
     if not cat:
         return []
     return _get_price_trend(db, category_id=cat.id, region_id=region_id,
-                            start_date=start_date, end_date=end_date)
+                            start_date=start_date, end_date=end_date,
+                            include_sample=include_sample)
 
 
-def latest_feed_prices(db: Session, region_id=None):
+def latest_feed_prices(db: Session, region_id=None, include_sample=False):
     """最新饲料价格：四种饲料各取最近一条，外加 kg/斤 换算参考"""
     items = []
     for cat in _feed_categories(db):
         q = db.query(PriceData, Region.name) \
             .join(Region, PriceData.region_id == Region.id) \
             .filter(PriceData.category_id == cat.id)
+        q = _apply_sample_filter(q, include_sample)
         if region_id:
             q = q.filter(PriceData.region_id == region_id)
         row = q.order_by(PriceData.record_date.desc()).first()

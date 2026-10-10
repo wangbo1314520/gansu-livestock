@@ -4,7 +4,7 @@ APScheduler 定时任务：
   - 每日 07:00 爬饲料价格
   - 每周一 08:00 爬政府监测价格
   - 每日 07:30 跑预测并落库
-  - 每日 08:00 巡检预警规则
+  - 每小时整点巡检预警规则
   - 每周日 02:00 备份数据库
 任务体延迟导入，避免循环依赖；爬虫/预测实现就位前只打日志
 """
@@ -52,11 +52,18 @@ def predict_job():
 
 
 def alert_check_job():
-    """每日 08:00 巡检预警规则，生成预警记录"""
+    """每小时巡检预警规则，生成预警记录"""
     logger.info("[定时任务] 预警巡检开始")
     try:
-        # TODO: from service.alert_service import check_all_rules; check_all_rules()
-        logger.info("[定时任务] 预警巡检完成（预警服务未接入，跳过）")
+        from model import SessionLocal
+        from service.alert_service import check_all_rules
+        db = SessionLocal()
+        try:
+            result = check_all_rules(db)
+            logger.info("[定时任务] 预警巡检完成: 规则 %d 条, 触发 %d 条",
+                        result["total_rules"], result["triggered"])
+        finally:
+            db.close()
     except Exception as e:
         logger.error("[定时任务] 预警巡检失败: %s", e)
 
@@ -84,7 +91,7 @@ def start_scheduler():
                        id="crawl_feed", replace_existing=True)
     _scheduler.add_job(predict_job, CronTrigger(hour=7, minute=30),
                        id="predict", replace_existing=True)
-    _scheduler.add_job(alert_check_job, CronTrigger(hour=8, minute=0),
+    _scheduler.add_job(alert_check_job, CronTrigger(minute=0),
                        id="alert_check", replace_existing=True)
     _scheduler.add_job(backup_job, CronTrigger(day_of_week="sun", hour=2, minute=0),
                        id="backup", replace_existing=True)
