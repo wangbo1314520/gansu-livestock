@@ -1,0 +1,2 @@
+{"code":200,"data":{"mode":"school","service":"gansu-livestock"},"msg":"ok"}
+

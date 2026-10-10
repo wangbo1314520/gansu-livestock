@@ -88,6 +88,35 @@ npm run dev
 - 示例数据 3952 条（is_sample=1）仅在看板勾选"含示例数据"（`include_sample=true`）时可见
 - 明细见 [数据覆盖度](docs/数据覆盖度.md)、[数据源地图](docs/数据源地图.md)
 
+## 数据导出
+
+`GET /api/price/export?region_id=12&category_id=1` 导出 CSV（UTF-8 BOM，Excel 直开），
+字段含日期/地区/分类/价格/来源/备注；学校版页面也可直接下载（`/api/price/export` 链接）。
+默认仅导出真实数据，`include_sample=true` 含示例。
+
+## 报告生成
+
+```bash
+cd backend && set DB_PASSWORD=***
+venv\Scripts\python.exe scripts\gen_weekly_report.py          # 本周周报
+venv\Scripts\python.exe scripts\gen_monthly_report.py 2026-09  # 指定月月报（含走势图）
+```
+
+输出到 `docs/reports/`（weekly_YYYY-MM-DD.md / monthly_YYYY-MM.md + png），
+含核心四项价格、环比同比、异常提示、下周 ARIMAX 预测；数据不足自动提示跳过。
+
+## 部署
+
+Docker 编排已就绪（MySQL + backend + nginx，双前端 dist 已复制到 deploy/html）：
+
+```bash
+export DB_PASSWORD=你的密码
+docker compose up -d          # 首次自动导入 init.sql
+curl http://127.0.0.1/api/health
+```
+
+详见 [部署指南](docs/部署指南.md)（含 Tailscale 家用版远程访问、常见问题）。
+
 ## 文档
 
 - [需求文档](docs/需求文档.md)

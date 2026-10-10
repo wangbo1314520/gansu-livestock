@@ -45,8 +45,8 @@ def predict_series(series, exog=None, model="arima", days=30):
     else:
         raise ValueError("未知模型: %s（支持 arima / arimax）" % model)
 
-    # 回测精度（数据足够才算）
-    metrics = backtest(_bt, s, test_days=min(30, len(s) // 3))
+    # 回测精度（数据足够才算；test_days 与预测步长一致，避免形状不匹配）
+    metrics = backtest(_bt, s, test_days=min(days, len(s) // 3))
     if metrics:
         metrics["grade"] = grade(metrics.get("mape", float("nan")))
 

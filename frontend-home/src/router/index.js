@@ -28,6 +28,11 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   document.title = to.meta.title || '牛羊行情'
+  // 支持 ?token= 直接注入登录态（截图/扫码场景）
+  const urlToken = new URLSearchParams(window.location.search).get('token')
+  if (urlToken && !localStorage.getItem('token')) {
+    localStorage.setItem('token', urlToken)
+  }
   const token = localStorage.getItem('token')
   if (!token && to.name !== 'Login') {
     return { name: 'Login' }

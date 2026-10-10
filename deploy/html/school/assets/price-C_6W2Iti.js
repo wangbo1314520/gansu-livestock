@@ -1,0 +1,1 @@
+import{r as t}from"./_plugin-vue_export-helper-D-LFsYQv.js";const s=e=>t.get("/price/list",{params:e}),c=e=>t.get("/price/trend",{params:e}),i=e=>t.get("/price/compare",{params:e}),o=e=>t.get("/price/latest",{params:e}),a=e=>t.get("/price/yoy",{params:e});export{a,c as b,s as c,i as d,o as g};

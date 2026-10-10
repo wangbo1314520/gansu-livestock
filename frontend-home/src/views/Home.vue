@@ -5,12 +5,18 @@
     <!-- 今日价格：活牛 / 活羊 / 玉米 / 豆粕 -->
     <van-grid :column-num="2" :border="false" class="price-grid">
       <van-grid-item v-for="p in todayPrices" :key="p.category_id">
-        <div class="p-name">{{ p.category_name || p.feed_name }}</div>
-        <div class="p-value">{{ p.price }}<small> 元/斤</small></div>
-        <div class="p-date">
-          {{ p.record_date }}
-          <span class="src-tag" :class="'src-' + (p.source || 'manual')"
-                @click.stop>{{ srcLabel(p.source) }}</span>
+        <div class="p-card">
+          <div class="p-name">{{ p.category_name || p.feed_name }}</div>
+          <div class="p-value">{{ p.price }}<small> 元/斤</small></div>
+          <div class="p-change" v-if="changeMap[p.category_id] != null"
+               :class="changeMap[p.category_id] >= 0 ? 'chg-up' : 'chg-down'">
+            较上期 {{ changeMap[p.category_id] > 0 ? '+' : '' }}{{ changeMap[p.category_id] }}%
+          </div>
+          <div class="p-date">
+            {{ p.record_date }}
+            <span class="src-tag" :class="'src-' + (p.source || 'manual')"
+                  @click.stop>{{ srcLabel(p.source) }}</span>
+          </div>
         </div>
       </van-grid-item>
     </van-grid>
@@ -38,8 +44,8 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getLatestPrices } from '../api/price'
-import { getLatestFeed } from '../api/feed'
+import { getLatestPrices, getPriceTrend } from '../api/price'
+import { getLatestFeed, getFeedTrend } from '../api/feed'
 import { getRecords } from '../api/alert'
 
 const latest = ref([])
@@ -67,6 +73,25 @@ const todayPrices = computed(() => {
   return [...livestock, ...feeds]
 })
 
+const changeMap = ref({})   // {category_id: 较上期变化%}
+
+// 较上期变化：周更数据无"昨日"，取趋势最后两点（最近两期）
+async function loadChange(cid, isFeed) {
+  try {
+    const params = { region_id: DEFAULT_REGION_ID, days: 60 }
+    const res = isFeed
+      ? await getFeedTrend({ ...params, feed_name: FEED_NAME[cid] })
+      : await getPriceTrend({ ...params, category_id: cid })
+    const pts = (res && res.points) || []
+    if (pts.length >= 2) {
+      const last = pts[pts.length - 1].price
+      const prev = pts[pts.length - 2].price
+      if (prev) changeMap.value[cid] = Number(((last - prev) / prev * 100).toFixed(1))
+    }
+  } catch (e) { /* 无趋势数据时不显示 */ }
+}
+const FEED_NAME = { 5: '玉米', 6: '豆粕' }
+
 const alertText = computed(() =>
   `您有 ${unreadAlerts.value} 条价格预警未读，点击查看`)
 
@@ -82,6 +107,9 @@ onMounted(async () => {
     const b = await loadWithFallback(getLatestFeed, DEFAULT_REGION_ID)
     feed.value = b.data
     dataMode.value = (a.sample || b.sample) ? 'sample' : 'real'
+    // 较上期（活牛1/活羊3 走价格趋势；玉米5/豆粕6 走饲料趋势）
+    loadChange(1, false); loadChange(3, false)
+    loadChange(5, true); loadChange(6, true)
   } catch (e) { /* 后端未起时空展示 */ }
   try {
     const data = await getRecords({ is_read: 0, page: 1, page_size: 1 })
@@ -95,7 +123,12 @@ onMounted(async () => {
 .p-name { color: #646566; font-size: 14px; }
 .p-value { font-size: 26px; font-weight: bold; color: #ee0a24; margin: 4px 0; }
 .p-value small { font-size: 12px; color: #969799; font-weight: normal; }
-.p-date { color: #c8c9cc; font-size: 12px; }
+.p-card { display: flex; flex-direction: column; min-height: 108px; width: 100%; padding: 4px 2px; }
+.p-value { font-size: 30px !important; }
+.p-change { font-size: 12px; margin-top: 1px; }
+.chg-up { color: #ee0a24; }
+.chg-down { color: #07c160; }
+.p-date { color: #c8c9cc; font-size: 12px; margin-top: auto; text-align: right; }
 .src-tag { margin-left: 4px; padding: 0 4px; border-radius: 3px; font-size: 10px; color: #fff; }
 .src-gov { background: #07c160; }
 .src-derived { background: #969799; }

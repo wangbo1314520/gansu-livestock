@@ -159,3 +159,40 @@ gansu-livestock 后端 · Base URL `http://<host>:5000/api`
 ## 13. 其他
 
 `GET /api/health`：健康检查（免认证），返回 `{"code":200,"data":{"mode":"school",...}}`
+
+
+## 14. 第六轮变更记录（2026-10-10）
+
+### 14.1 价格导出（原有接口补备注列）
+
+`GET /api/price/export?category_id=&region_id=&start_date=&end_date=&format=csv`
+
+- 返回 CSV 文件流（`text/csv; charset=utf-8`，带 UTF-8 BOM，Excel 直接打开不乱码）
+- 字段：日期、地区、分类、品种、价格、单位、来源、来源明细、**备注**（新增）
+- 默认排除示例数据；`include_sample=true` 包含
+
+### 14.2 趋势接口结构升级（v2）
+
+`GET /api/price/trend` 返回由数组升级为对象：
+
+```json
+{
+  "points": [{"date": "2026-10-10", "price": 15.15, "source": "gov"}],
+  "data_region_id": 12, "data_region_name": "定西市", "fallback": true
+}
+```
+
+- 指定地区无数据时**动态回退**到该分类最近有数据的地区（不硬编码），`fallback=true` 标记
+- 每点带 `source`（gov/derived/index/manual，多来源逗号分隔取首个），供前端区分观测/反推
+- `GET /api/price/feed/latest` 同步升级为 `{items, data_region_id, data_region_name}`
+
+### 14.3 报告生成脚本（非 HTTP）
+
+- `backend/scripts/gen_weekly_report.py [YYYY-Wnn]`：周报 md（价格/环比/异常/下周预测）
+- `backend/scripts/gen_monthly_report.py [YYYY-MM]`：月报 md + matplotlib 走势 png
+- `backend/scripts/derive_livestock_price.py`：活牛/活羊反推补全（幂等）
+- `backend/scripts/gen_thesis_materials.py`：论文统计表与图
+
+### 14.4 登录态 URL 注入（截图/扫码场景）
+
+两前端路由守卫支持 `?token=<JWT>` 自动写入 localStorage 后正常进入内页。

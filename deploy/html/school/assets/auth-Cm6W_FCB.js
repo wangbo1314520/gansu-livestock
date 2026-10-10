@@ -1,0 +1,1 @@
+import{r as s}from"./_plugin-vue_export-helper-D-LFsYQv.js";const o=e=>s.post("/auth/login",e),g=()=>s.post("/auth/logout"),a=()=>s.get("/base/regions"),r=()=>s.get("/base/breeds"),n=()=>s.get("/base/categories");export{g as a,r as b,n as c,a as g,o as l};

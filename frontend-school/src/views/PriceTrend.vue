@@ -21,6 +21,14 @@
       <el-form-item label="包含示例数据">
         <el-switch v-model="includeSample" @change="load" />
       </el-form-item>
+      <el-form-item label="数据源">
+        <el-select v-model="sources" multiple collapse-tags style="width: 200px">
+          <el-option label="政府监测" value="gov" />
+          <el-option label="反推补全" value="derived" />
+          <el-option label="红牛指数" value="index" />
+          <el-option label="示例数据" value="manual" />
+        </el-select>
+      </el-form-item>
     </el-form>
 
     <ChartCard title="价格趋势" :option="option" :height="420" />
@@ -56,30 +64,68 @@ const categories = ref([])
 
 const livestockCategories = computed(() => categories.value.filter((c) => c.type === 'livestock'))
 
-// 按点来源拆两条序列（与共享 x 轴全长度对齐，非本系列的点置 null）
-const isDerived = (p) => (p.source || '').includes('derived')
+// 数据源多选筛选（默认全选；图表按筛选结果绘制）
+const sources = ref(['gov', 'derived', 'index', 'manual'])
+const SRC_META = {
+  gov: { label: '政府监测', color: '#409eff', detail: '政府价格监测周报（真实观测）' },
+  derived: { label: '反推补全', color: '#909399', detail: '由肉价反推的衍生数据（预测补全用）' },
+  index: { label: '红牛指数', color: '#67c23a', detail: '新华·平凉红牛价格指数（月度）' },
+  manual: { label: '示例数据', color: '#e6a23c', detail: '开发用示例数据（非真实）' },
+}
+const ptSrc = (p) => {
+  // 点 source 可能是多来源逗号串，取第一个非空值归一到四类
+  const s = (p.source || 'manual').split(',')[0].trim()
+  return SRC_META[s] ? s : 'manual'
+}
+const filtered = computed(() =>
+  trend.value.filter((p) => sources.value.includes(ptSrc(p))))
+
+// 各来源一条 series（与共享 x 轴全长度对齐，非本系列的点置 null）
+const seriesOf = (key) => filtered.value.map((p) => (ptSrc(p) === key ? p.price : null))
 
 const option = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['实际观测', '反推补全'] },
-  xAxis: { type: 'category', data: trend.value.map((p) => p.date) },
+  tooltip: {
+    trigger: 'axis',
+    formatter: (params) => {
+      const date = params[0]?.axisValueLabel || ''
+      const lines = params.filter((v) => v.value != null).map((v) => {
+        const meta = Object.values(SRC_META).find((m) => m.label === v.seriesName)
+        return `${v.marker} ${v.seriesName}：<b>${v.value}</b> 元/斤<br/>
+<span style="color:#909399;font-size:11px">${meta ? meta.detail : ''}</span>`
+      })
+      return lines.length ? `${date}<br/>${lines.join('<br/>')}` : date
+    },
+  },
+  legend: { data: Object.values(SRC_META).map((m) => m.label) },   // 可点击切换数据源
+  xAxis: {
+    type: 'category',
+    data: filtered.value.map((p) => p.date),
+    axisLabel: {
+      formatter: (d) => d.slice(0, 7),     // YYYY-MM
+      rotate: 30,
+    },
+  },
   yAxis: { type: 'value', name: '元/斤', scale: true },
   dataZoom: [{ type: 'inside' }, { type: 'slider' }],
   series: [
-    { name: '实际观测', type: 'line', smooth: true, symbol: 'circle',
-      connectNulls: false,
-      data: trend.value.map((p) => (isDerived(p) ? null : p.price)),
-      markPoint: {
-        data: [
-          { type: 'max', name: '最高' },
-          { type: 'min', name: '最低' },
-        ],
-      } },
-    { name: '反推补全', type: 'line', smooth: true, symbol: 'diamond', symbolSize: 7,
+    { name: SRC_META.gov.label, type: 'line', smooth: true, symbol: 'circle',
+      connectNulls: false, itemStyle: { color: SRC_META.gov.color },
+      lineStyle: { color: SRC_META.gov.color },
+      data: seriesOf('gov') },
+    { name: SRC_META.derived.label, type: 'line', smooth: true, symbol: 'diamond', symbolSize: 7,
       connectNulls: true,
-      lineStyle: { type: 'dashed', color: '#909399' },
-      itemStyle: { color: '#909399' },
-      data: trend.value.map((p) => (isDerived(p) ? p.price : null)) },
+      lineStyle: { type: 'dashed', color: SRC_META.derived.color },
+      itemStyle: { color: SRC_META.derived.color },
+      data: seriesOf('derived') },
+    { name: SRC_META.index.label, type: 'line', symbol: 'triangle', symbolSize: 8,
+      connectNulls: true,
+      lineStyle: { type: 'dotted', width: 2, color: SRC_META.index.color },
+      itemStyle: { color: SRC_META.index.color },
+      data: seriesOf('index') },
+    { name: SRC_META.manual.label, type: 'line', smooth: true, symbol: 'none',
+      lineStyle: { width: 1, color: SRC_META.manual.color },
+      itemStyle: { color: SRC_META.manual.color },
+      data: seriesOf('manual') },
   ],
   grid: { left: 50, right: 20, top: 40, bottom: 50 },
 }))

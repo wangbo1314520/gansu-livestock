@@ -76,9 +76,14 @@ def calc_delay_profit(weight, daily_gain, daily_feed_cost, daily_other_cost,
 # ------------------------------------------------------------------
 
 def _feed_price_map(db: Session, region_id, include_sample=False):
-    """最新饲料价 {名称: 元/斤}"""
+    """最新饲料价 {名称: 元/斤}；真实源缺项（如麸皮/苜蓿草）回退不限地区+含示例的最新价"""
     res = latest_feed_prices(db, region_id=region_id, include_sample=include_sample)
-    return {i["feed_name"]: i["price"] for i in res["items"]}
+    m = {i["feed_name"]: i["price"] for i in res["items"]}
+    if len(m) < 4:
+        res2 = latest_feed_prices(db, region_id=None, include_sample=True)
+        for i in res2["items"]:
+            m.setdefault(i["feed_name"], i["price"])
+    return m
 
 
 def _load_config(db: Session, farm_id, category):

@@ -196,11 +196,12 @@ def export():
             include_sample=args.get("include_sample", "false").lower() in ("1", "true", "yes"))
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(["日期", "地区", "分类", "品种", "价格", "单位", "来源", "来源明细"])
+        writer.writerow(["日期", "地区", "分类", "品种", "价格", "单位", "来源", "来源明细", "备注"])
         for r in rows:
             writer.writerow([r["record_date"], r["region_name"], r["category_name"],
                              r["breed_name"] or "", r["price"], r["unit"],
-                             r["source"], r["source_detail"] or ""])
+                             r["source"], r["source_detail"] or "",
+                             (r.get("remark") or "")[:120]])
         return Response(
             "\ufeff" + buf.getvalue(),
             mimetype="text/csv; charset=utf-8",

@@ -1,11 +1,14 @@
 <template>
   <div>
-    <!-- 指标卡：四类牛羊价格最新值 -->
+    <!-- 指标卡：活牛 / 活羊 / 玉米 / 豆粕（核心关注四项） -->
     <el-row :gutter="16">
-      <el-col :span="6" v-for="item in latestLivestock" :key="item.category_id">
+      <el-col :span="6" v-for="item in coreCards" :key="item.category_id">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-name">{{ item.category_name }}（{{ item.region_name }}）</div>
           <div class="stat-value">{{ item.price }} <small>元/斤</small></div>
+          <div class="stat-mom" :class="(item.momPct || 0) >= 0 ? 'up' : 'down'">
+            环比 {{ item.momPct == null ? "—" : (item.momPct > 0 ? "+" : "") + item.momPct + "%" }}
+          </div>
           <div class="stat-date">
             {{ item.record_date }}
             <span :title="item.source_detail || item.source" class="src-tag"
@@ -30,19 +33,28 @@
       </el-col>
     </el-row>
 
-    <div class="src-tip">当前显示定西周报数据</div>
+    <div class="src-tip">数据源：定西周报（更新至 {{ latestDate || "—" }}）</div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import ChartCard from '../components/ChartCard.vue'
-import { getLatestPrices, getPriceTrend } from '../api/price'
+import { getLatestPrices, getPriceTrend, getYoy } from '../api/price'
 import { getLatestFeed } from '../api/feed'
 
-const latestLivestock = ref([])
+const latestAll = ref([])      // price/latest 全分类（取核心四类）
 const latestFeed = ref([])
 const trend = ref([])
+const yoyMap = ref({})        // {category_id: mom_pct}
+
+// 核心关注四项：活牛、活羊、玉米、豆粕
+const CARDS = [1, 3, 5, 6]
+const coreCards = computed(() =>
+  latestAll.value.filter((p) => CARDS.includes(p.category_id))
+    .map((p) => ({ ...p, momPct: yoyMap.value[p.category_id] })))
+const latestDate = computed(() =>
+  coreCards.value.length ? coreCards.value[0].record_date : '')
 
 // 数据来源标签：gov=政府绿 derived=反推灰 index=指数蓝 manual=示例黄
 function srcLabel(s) {
@@ -62,8 +74,14 @@ onMounted(async () => {
   // 最新价（牲畜 + 饲料）与活牛趋势；默认定西（当前唯一有真实周报数据的地区）
   const REGION = 12
   try {
-    const data = await getLatestPrices({ region_id: REGION })
-    latestLivestock.value = data.filter((d) => d.type === 'livestock')
+    latestAll.value = await getLatestPrices({ region_id: REGION })
+    // 环比（上月）：逐核心分类取 mom_pct，单项失败不影响展示
+    for (const cid of CARDS) {
+      try {
+        const y = await getYoy({ category_id: cid, region_id: REGION })
+        yoyMap.value[cid] = y ? y.mom_pct : null
+      } catch (e) { yoyMap.value[cid] = null }
+    }
   } catch (e) { /* 数据库未初始化时空列表 */ }
   try {
     const res = await getLatestFeed({ region_id: REGION })
@@ -88,5 +106,8 @@ onMounted(async () => {
 .src-derived { background: #909399; }
 .src-index { background: #409eff; }
 .src-manual { background: #e6a23c; }
+.stat-mom { font-size: 12px; margin: 2px 0; }
+.up { color: #f56c6c; }
+.down { color: #67c23a; }
 .src-tip { text-align: center; color: #c0c4cc; font-size: 12px; margin-top: 16px; }
 </style>

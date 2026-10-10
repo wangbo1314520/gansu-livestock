@@ -1,0 +1,1 @@
+import{r as o}from"./request-D8lCz9K6.js";const a=s=>o.post("/auth/login",s),e=()=>o.post("/auth/logout"),g=()=>o.get("/auth/info"),n=s=>o.post("/auth/change-password",s),r=()=>o.get("/base/categories");export{e as a,g as b,n as c,r as g,a as l};

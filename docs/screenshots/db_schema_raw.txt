@@ -1,0 +1,17 @@
+alert_record	category_id,id,is_read,message,push_status,region_id,rule_id,trigger_time,trigger_value,user_id
+alert_rule	category_id,continuous_days,created_at,enabled,farm_id,id,name,region_id,rule_type,threshold,user_id
+breed	category,created_at,id,name,remark,stage
+cost_config	category,created_at,daily_feed_amount,daily_gain,daily_labor_cost,daily_other_cost,effective_date,farm_id,feed_detail,id
+farm	address,cattle_count,created_at,id,name,owner_id,region_id,sheep_count
+feed_record	created_at,farm_id,feed_name,id,quantity,record_date,remark,supplier,total_price,type,unit_price
+feed_stock	farm_id,feed_name,id,quantity,unit,unit_price,updated_at,warn_threshold
+input_correlation	calc_date,correlation,created_at,id,input_category_id,lag_days,livestock_category_id,region_id
+ledger	amount,category,counterparty,created_at,farm_id,id,livestock_id,quantity,remark,trade_date,type,unit_price
+livestock	birth_date,breed_id,category,created_at,ear_tag,farm_id,id,purchase_date,purchase_price,remark,status,weight
+login_log	id,ip,login_time,success,user_agent,user_id
+predict_result	category_id,confidence,created_at,id,lower_bound,mae,mape,model,predict_date,predict_value,region_id,rmse,upper_bound
+price_category	created_at,id,name,sort_order,type,unit
+price_data	breed_id,category_id,created_at,farm_id,id,is_sample,price,record_date,region_id,remark,source,source_detail,unit,updated_at,user_id
+push_log	channel,content,id,send_time,status,title,user_id
+region	city_code,created_at,id,level,name,parent_id
+user	created_at,farm_id,id,last_login,password_hash,phone,real_name,role,status,username

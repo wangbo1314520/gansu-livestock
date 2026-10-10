@@ -1,0 +1,23 @@
+graph TB
+  subgraph 前端
+    A1[学校版 Vue3+ElementPlus<br/>数据分析]
+    A2[家用版 Vue3+Vant<br/>养殖决策]
+  end
+  subgraph 后端 Flask
+    B1[价格/饲料模块]
+    B2[预测模块 ARIMA/ARIMAX]
+    B3[预警模块]
+    B4[成本/建议模块]
+    B5[牧场/账本模块]
+    B6[定时任务 APScheduler]
+  end
+  subgraph 数据层
+    C1[(MySQL 17表)]
+    C2[爬虫 定西/平凉]
+    C3[示例数据 is_sample=1]
+  end
+  A1-->B1 & B2 & B3
+  A2-->B4 & B5 & B1
+  B6-->C2-->B1
+  B1 & B2 & B3 & B4 & B5-->C1
+  C3-->C1

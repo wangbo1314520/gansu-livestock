@@ -25,7 +25,18 @@
       </el-form-item>
     </el-form>
 
-    <ChartCard title="历史价格与预测（阴影为95%置信区间）" :option="option" :height="440" />
+    <!-- 顶部精度摘要 -->
+    <div v-if="metrics" class="metric-bar">
+      <span>MAPE <b>{{ metrics.mape }}%</b></span>
+      <el-tag size="small"
+              :type="metrics.grade === '优秀' ? 'success' : metrics.grade === '良好' ? 'warning' : 'info'">
+        {{ metrics.grade }}
+      </el-tag>
+      <span style="color:#909399">模型：{{ model === 'arimax' ? 'ARIMAX（含饲料变量）' : 'ARIMA' }}</span>
+    </div>
+
+    <ChartCard title="历史价格与预测（阴影为95%置信区间，预测段为虚线）"
+               :option="option" :height="440" />
 
     <!-- 精度指标 -->
     <el-descriptions v-if="metrics" title="回测精度（最近30天留出法）" :column="4" border
@@ -40,6 +51,8 @@
       </el-descriptions-item>
     </el-descriptions>
     <el-empty v-else description="点击「开始预测」后显示精度指标" :image-size="80" />
+
+    <div class="disclaimer">预测仅供参考，不构成投资建议</div>
   </el-card>
 </template>
 
@@ -70,6 +83,11 @@ const option = computed(() => {
     fcLine.unshift([history.value[history.value.length - 1].date,
                     history.value[history.value.length - 1].value])
   }
+  // 置信带：lower 作 stack 基底（透明），(upper-lower) 为带厚（浅橙填充）
+  const lowerBase = forecast.value.map((p) => [p.date, p.lower])
+  const bandDepth = forecast.value.map(
+    (p) => [p.date, p.lower == null || p.upper == null ? null
+            : Number((p.upper - p.lower).toFixed(4))])
   return {
     tooltip: { trigger: 'axis' },
     legend: { data: ['历史价格', '预测价格'] },
@@ -77,13 +95,17 @@ const option = computed(() => {
     yAxis: { type: 'value', name: '元/斤', scale: true },
     series: [
       { name: '历史价格', type: 'line', data: histLine, showSymbol: false,
-        itemStyle: { color: '#409eff' } },
+        itemStyle: { color: '#409eff' },
+        lineStyle: { width: 2 } },
       { name: '预测价格', type: 'line', data: fcLine, showSymbol: false,
         itemStyle: { color: '#e6a23c' },
-        areaStyle: {
-          color: 'rgba(230,162,60,0.15)',
-          origin: 'start',
-        } },
+        lineStyle: { width: 2, type: 'dashed' } },
+      { name: 'ci_base', type: 'line', data: lowerBase, stack: 'ci',
+        symbol: 'none', lineStyle: { opacity: 0 }, silent: true,
+        areaStyle: { color: 'transparent' }, tooltip: { show: false } },
+      { name: '95%置信区间', type: 'line', data: bandDepth, stack: 'ci',
+        symbol: 'none', lineStyle: { opacity: 0 }, silent: true,
+        areaStyle: { color: 'rgba(230,162,60,0.18)' } },
     ],
     grid: { left: 50, right: 20, top: 40, bottom: 40 },
   }
@@ -109,3 +131,8 @@ onMounted(async () => {
   categories.value = await getCategories()
 })
 </script>
+
+<style scoped>
+.metric-bar { display: flex; align-items: center; gap: 12px; margin: 8px 0; font-size: 14px; }
+.disclaimer { text-align: center; color: #c0c4cc; font-size: 12px; margin-top: 12px; }
+</style>
