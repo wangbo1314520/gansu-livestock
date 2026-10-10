@@ -36,6 +36,26 @@
           </el-space>
           <pre class="spider-log">{{ logText }}</pre>
         </el-card>
+        <el-card shadow="never" style="margin-top: 16px">
+          <template #header>家庭记录 Excel 导入</template>
+          <el-space direction="vertical" style="width: 100%">
+            <div style="color:#909399;font-size:12px">
+              上传《家庭牧场记录模板.xlsx》：卖牛羊/买饲料记入账本，贩子报价入 price_data（source=dealer）
+            </div>
+            <input ref="excelInput" type="file" accept=".xlsx" style="display:none" @change="onExcel" />
+            <el-button type="success" :loading="importing" @click="$refs.excelInput.click()">
+              选择 Excel 导入
+            </el-button>
+            <div v-if="importResult" style="font-size:13px">
+              成功 {{ importResult.success }} 条 / 跳过 {{ importResult.skipped }} 条 /
+              错误 {{ (importResult.errors || []).length }} 条
+              <div v-for="(e, i) in (importResult.errors || []).slice(0, 5)" :key="i"
+                   style="color:#f56c6c;font-size:12px">
+                {{ e.sheet }} 第{{ e.row }}行：{{ e.reason }}
+              </div>
+            </div>
+          </el-space>
+        </el-card>
       </el-col>
       <el-col :span="12">
         <el-card shadow="never">
@@ -77,6 +97,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import request from '../api/request'
 import { getUsers, addUser, runSpider, getSpiderLog, getSystemInfo } from '../api/admin'
 
 const users = ref([])
@@ -84,6 +105,31 @@ const logText = ref('（暂无日志）')
 const sysInfo = ref(null)
 const userDialog = ref(false)
 const newUser = reactive({ username: '', password: '', real_name: '', role: 'viewer' })
+
+// 家庭记录 Excel 导入
+const excelInput = ref(null)
+const importing = ref(false)
+const importResult = ref(null)
+
+async function onExcel(ev) {
+  const file = ev.target.files[0]
+  if (!file) return
+  importing.value = true
+  importResult.value = null
+  try {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('farm_id', '1')
+    const res = await request.post('/price/import-excel', form)
+    importResult.value = res
+    ElMessage.success('导入完成')
+  } catch (e) {
+    ElMessage.error(e.message || '导入失败')
+  } finally {
+    importing.value = false
+    ev.target.value = ''
+  }
+}
 
 async function loadUsers() {
   const data = await getUsers({ page: 1, page_size: 50 })

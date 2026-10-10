@@ -5,7 +5,7 @@
 import csv
 import io
 
-from flask import Blueprint, request, Response
+from flask import Blueprint, g, request, Response
 
 from model import SessionLocal
 from service import price_service
@@ -177,6 +177,36 @@ def import_batch():
         ok_count, errors = price_service.import_prices(
             db, data, user_id=auth.get_current_user_id())
         return ok({"success": ok_count, "failed": len(errors), "errors": errors[:20]})
+    finally:
+        db.close()
+
+
+@price_bp.route("/import-excel", methods=["POST"])
+@auth.login_required
+@auth.role_required("admin")
+def import_excel():
+    """家庭记录 Excel 一键导入（multipart/form-data：file=<xlsx>, farm_id=）
+    三个 Sheet：卖牛羊->账本收入；买饲料->账本支出；贩子报价->price_data(source=dealer)"""
+    from openpyxl import load_workbook
+    from service import excel_import_service
+
+    f = request.files.get("file")
+    if not f:
+        return err(400, "缺少 file 字段（xlsx 文件）")
+    farm_id = int(request.form.get("farm_id", 0) or 0) or 1
+    try:
+        wb = load_workbook(f, read_only=True, data_only=True)
+    except Exception as e:
+        return err(400, "Excel 解析失败: %s" % str(e)[:80])
+    db = SessionLocal()
+    try:
+        result = excel_import_service.import_family_excel(
+            db, wb, farm_id, user_id=g.get("user_id"))
+        return ok(result, msg="导入完成：%d 成功 / %d 跳过 / %d 错误" % (
+            result["success"], result["skipped"], len(result["errors"])))
+    except Exception as e:
+        db.rollback()
+        return err(500, "导入失败: %s" % str(e)[:120])
     finally:
         db.close()
 
