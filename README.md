@@ -3,6 +3,55 @@
 > **一句话**：自动抓取甘肃政府发布的牛羊价格周报，做统计分析和 ARIMAX 价格预测，
 > 给家庭牧场一个"现在能不能卖"的大白话建议。
 
+## 核心功能
+
+1. **多源价格采集**：定西/平凉畜牧局周报 + 平凉红牛指数三个幂等爬虫，定时自动抓取入库
+2. **统计分析**：趋势/地区对比/同比环比/价格关联分析，四色来源标签（政府绿/反推灰/指数蓝/示例黄）
+3. **价格预测**：ARIMA/ARIMAX 双模型（玉米价作外生变量），AIC 定阶 + 留出法回测 + 95% 置信区间
+4. **价格预警**：跌破成本线/涨超阈值/连续涨跌四类规则，每小时巡检主动提醒
+5. **家庭决策**：成本计算器、出栏建议（四分支+人话理由）、存栏/饲料/账本，手机 PWA 直接用
+
+## 技术栈
+
+| 层 | 技术 |
+|---|---|
+| 后端 | Python 3.14 · Flask 3.1（12 蓝图 62 路由）· SQLAlchemy 2.1 · PyJWT · bcrypt · APScheduler |
+| 前端 | Vue 3 · Element Plus（学校版）/ Vant 4 + PWA（家用版）· ECharts 5 · Vite |
+| 数据库 | MySQL 8.0（17 表，utf8mb4，source × is_sample 双标记体系） |
+| 预测 | statsmodels（SARIMAX/ARIMA）· pandas（预处理：插值/ADF 检验） |
+
+## 系统架构
+
+```mermaid
+flowchart LR
+    subgraph 表现层
+        A[学校版 Vue3+ElementPlus]
+        B[家用版 Vue3+Vant+PWA]
+    end
+    subgraph 业务层
+        C[Flask 3.1 · 12 蓝图 62 路由]
+        D[预测模块 statsmodels]
+        E[预警规则引擎]
+        F[APScheduler 定时调度]
+    end
+    subgraph 数据层
+        G[(MySQL 8.0 · 17 表)]
+        H[爬虫 x3 定西/平凉/红牛指数]
+        I[政府公开周报/指数源站]
+    end
+    A --> C
+    B --> C
+    C --> D
+    C --> E
+    F --> E
+    F --> H
+    H -->|幂等入库| G
+    I --> H
+    D --> G
+    E --> G
+    C --> G
+```
+
 ## 主要成果（2026-10-10 实测）
 
 | 指标 | 数值 |
@@ -15,7 +64,7 @@
 | 测试 | 28 项 pytest 全过 + 七轮人工验收 |
 | 部署 | 局域网生产模式运行中（家人手机可访问）|
 
-**系统架构**（三层，源码 docs/figures/fig5_architecture.mmd）：
+**系统架构**（mermaid 版见上方"系统架构"节）：
 
 ```
 学校版(Vue3+ElementPlus) ─┐                          ┌─ 爬虫×3：定西/平凉/红牛指数（幂等）
@@ -168,4 +217,11 @@ curl http://127.0.0.1/api/health
 - [技术方案](docs/技术方案.md)
 - [数据库设计](docs/数据库设计.md)
 - [API 接口文档](docs/API接口文档.md)
+- [部署指南](docs/部署指南.md)（含 Docker、Tailscale 远程访问）
+- [数据覆盖度](docs/数据覆盖度.md) · [数据源地图](docs/数据源地图.md)
+- [反推系数核实](docs/反推系数核实.md)
 - [开发计划](docs/开发计划.md)
+
+## 许可证
+
+[MIT License](LICENSE)（Copyright (c) 2026）
